@@ -23,7 +23,8 @@ from app_name.views import (
     index, upload_csv, get_field_info, get_track_data, 
     login_view, logout_view, register, admin_dashboard, 
     admin_track_visualization, admin_settings, get_users, 
-    delete_user, delete_field
+    delete_user, delete_field, get_user_info, update_user_info, 
+    change_password
 )
 
 urlpatterns = [
@@ -44,4 +45,7 @@ urlpatterns = [
     # 用户管理API路由
     path('api/users/', get_users, name='get_users'),
     path('api/users/<int:user_id>/', delete_user, name='delete_user'),
+    path('api/user-info/', get_user_info, name='get_user_info'),  # 添加用户信息API路由
+    path('api/update-user-info/', update_user_info, name='update_user_info'),
+    path('api/change-password/', change_password, name='change_password'),
 ]

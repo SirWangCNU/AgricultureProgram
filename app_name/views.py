@@ -426,4 +426,56 @@ def delete_field(request, field_name):
             'message': str(e)
         }, status=500)
 
+@login_required
+def get_user_info(request):
+    """获取用户信息"""
+    user = request.user
+    return JsonResponse({
+        'status': 'success',
+        'username': user.username,
+        'email': user.email,
+        'phone': user.profile.phone if hasattr(user, 'profile') else '',
+        'organization': user.profile.organization if hasattr(user, 'profile') else '',
+    })
+
+@login_required
+def update_user_info(request):
+    """更新用户信息"""
+    if request.method == 'POST':
+        try:
+            user = request.user
+            user.email = request.POST.get('email', user.email)
+            
+            # 更新或创建用户档案
+            profile, created = UserProfile.objects.get_or_create(user=user)
+            profile.phone = request.POST.get('phone', profile.phone)
+            profile.organization = request.POST.get('organization', profile.organization)
+            profile.save()
+            
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'error', 'message': '无效的请求方法'})
+
+@login_required
+def change_password(request):
+    """修改密码"""
+    if request.method == 'POST':
+        current_password = request.POST.get('current_password')
+        new_password = request.POST.get('new_password')
+        
+        # 验证当前密码
+        if not request.user.check_password(current_password):
+            return JsonResponse({'status': 'error', 'message': '当前密码错误'})
+        
+        # 更新密码
+        request.user.set_password(new_password)
+        request.user.save()
+        
+        # 更新session
+        update_session_auth_hash(request, request.user)
+        
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'status': 'error', 'message': '无效的请求方法'})
+
 

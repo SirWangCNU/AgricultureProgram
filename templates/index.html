@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>农业轨迹分析后台</title>
+    <title>农业轨迹数据监管平台</title>
     <link
             rel="stylesheet"
             href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -31,6 +31,72 @@
             background-color: var(--background-color);
         }
 
+        /* 顶部导航栏 */
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 30px;
+            z-index: 1000;
+        }
+
+        .platform-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+
+        .top-nav-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .current-time {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #E8F5E9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--secondary-color);
+        }
+
+        .logout-btn {
+            padding: 6px 12px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: var(--secondary-color);
+        }
+
         /* 侧边导航栏 */
         .sidebar {
             width: 250px;
@@ -39,13 +105,7 @@
             background: white;
             box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
             padding: 20px;
-        }
-
-        .logo {
-            text-align: center;
-            padding: 20px;
-            border-bottom: 1px solid #eee;
-            margin-bottom: 30px;
+            top: 80px; /* 调整顶部位置，避免与顶部导航栏重叠 */
         }
 
         .nav-item {
@@ -62,18 +122,33 @@
             color: var(--secondary-color);
         }
 
+        .nav-item.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
         /* 主内容区 */
         .main-content {
             margin-left: 250px;
-            padding: 30px;
+            padding: 90px 30px 30px;
+        }
+
+        /* 功能模块容器 */
+        .module-container {
+            display: none;
+        }
+
+        .module-container.active {
+            display: block;
         }
 
         /* 数据面板 */
         .dashboard-panel {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 25px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+            padding: 15px;
         }
 
         .panel-card {
@@ -81,14 +156,135 @@
             border-radius: 12px;
             padding: 20px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .panel-card h3 {
+            margin: 0 0 15px 0;
+            color: var(--secondary-color);
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-card h3::before {
+            font-size: 20px;
+        }
+
+        /* 地图模块特殊样式 */
+        #map-module .panel-card {
+            margin-bottom: 25px;
+            padding: 25px;
+        }
+
+        #map-module .panel-card:last-child {
+            margin-bottom: 0;
+        }
+
+        #map-module h3 {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        /* 数据导入模块样式 */
+        #upload-module .panel-card {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .upload-area {
+            border: 2px dashed #C8E6C9;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #F8F9FA;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary-color);
+            background: #F1F8E9;
+        }
+
+        .upload-area p {
+            margin: 8px 0;
+            color: #666;
+        }
+
+        .upload-area p:first-child {
+            font-size: 18px;
+            color: var(--secondary-color);
+            margin-bottom: 12px;
+        }
+
+        .upload-button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+            width: 100%;
+            max-width: 200px;
+            margin: 0 auto;
+            display: block;
+        }
+
+        .upload-button:hover {
+            background: var(--secondary-color);
+        }
+
+        /* 系统设置模块样式 */
+        #settings-module .panel-card {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* 响应式布局调整 */
+        @media (max-width: 768px) {
+            .dashboard-panel {
+                grid-template-columns: 1fr;
+                padding: 10px;
+            }
+
+            .panel-card {
+                padding: 15px;
+            }
+
+            #upload-module .panel-card,
+            #settings-module .panel-card {
+                max-width: 100%;
+            }
         }
 
         /* 地图容器 */
         #trajectory-map {
-            height: 500px;
-            background: #e0e0e0;
+            height: 600px;
+            width: 100%;
             border-radius: 12px;
             margin-top: 20px;
+            background: #f8f9fa;
+            z-index: 1;
+        }
+
+        .leaflet-container {
+            height: 100%;
+            width: 100%;
+            border-radius: 12px;
         }
 
         /* 数据上传区域 */
@@ -147,54 +343,71 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
+        /* 地块选择器样式 */
         .track-selector {
-            padding: 15px;
+            padding: 15px 0;
         }
 
         .track-select {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             border: 1px solid #ddd;
-            border-radius: 5px;
+            border-radius: 8px;
             font-size: 16px;
-            margin-bottom: 15px;
+            margin: 10px 0 20px 0;
             background-color: white;
+            transition: border-color 0.3s;
+        }
+
+        .track-select:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
         }
 
         .track-info {
             background: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 15px;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
         }
 
         .track-info p {
-            margin: 5px 0;
+            margin: 8px 0;
             color: #666;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .track-info span {
-            color: #2E7D32;
+            color: var(--secondary-color);
             font-weight: 500;
         }
 
         .track-actions {
             display: flex;
-            gap: 10px;
+            gap: 15px;
+            margin-top: 20px;
         }
 
         .action-btn {
             flex: 1;
-            padding: 10px;
+            padding: 12px;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 14px;
-            transition: 0.3s;
+            font-size: 15px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .refresh-btn {
-            background: #4CAF50;
+            background: var(--primary-color);
             color: white;
         }
 
@@ -214,38 +427,40 @@
     </style>
 </head>
 <body>
+<!-- 顶部导航栏 -->
+<div class="top-nav">
+    <div class="platform-title">🌾 农业轨迹数据监管平台</div>
+    <div class="top-nav-right">
+        <div class="current-time" id="current-time"></div>
+        <div class="user-info">
+            <div class="user-avatar">👨‍🌾</div>
+            <span id="username">加载中...</span>
+        </div>
+        <a href="/logout/" class="logout-btn">退出登录</a>
+    </div>
+</div>
+
 <!-- 侧边栏 -->
 <div class="sidebar">
-    <div class="logo">
-        <h2 style="color: var(--secondary-color);">🌾 农踪分析</h2>
-    </div>
-    <div class="nav-item active">📊 数据分析看板</div>
-    <div class="nav-item">🗺️ 轨迹可视化</div>
-    <div class="nav-item">📤 数据导入</div>
-    <div class="nav-item">⚙️ 系统设置</div>
+    <div class="nav-item active" data-module="dashboard">📊 数据分析看板</div>
+    <div class="nav-item" data-module="map">🗺️ 轨迹地图显示</div>
+    <div class="nav-item" data-module="upload">📤 数据导入</div>
+    <div class="nav-item" data-module="settings">⚙️ 用户信息设置</div>
 </div>
 
 <!-- 主内容区 -->
 <div class="main-content">
-    <!-- 用户信息 -->
-    <div class="user-profile">
-        <div class="avatar">👨🌾</div>
-        <div>
-            <h2>用户界面</h2>
-            <p>所属区域：北京</p>
-            <a href="/logout/" style="color: var(--secondary-color); text-decoration: none;">
-                <div style="display: flex; align-items: center; margin-top: 10px;">
-                    <span style="margin-right: 5px;">退出登录</span>
-                    <span>🚪</span>
-                </div>
-            </a>
+    <!-- 数据分析看板模块 -->
+    <div class="module-container active" id="dashboard-module">
+        <div class="dashboard-panel">
+            <h3>📊 数据概览</h3>
+            <!-- 添加数据统计卡片 -->
         </div>
     </div>
 
-    <!-- 轨迹选择面板 -->
-    <div class="dashboard-panel">
-        <div class="panel-card">
-            <h3>🗺️ 地块选择</h3>
+    <!-- 轨迹地图显示模块 -->
+    <div class="module-container" id="map-module">
+        <div class="dashboard-panel">
             <div class="track-selector">
                 <select id="field-select" class="track-select">
                     <option value="">请选择地块...</option>
@@ -265,33 +480,88 @@
                 </div>
             </div>
         </div>
+        <div class="panel-card">
+            <h3>🚜 农机轨迹可视化</h3>
+            <div id="trajectory-map"></div>
+        </div>
     </div>
 
-    <!-- 轨迹地图 -->
-    <div class="panel-card">
-        <h3>🚜 农机轨迹可视化</h3>
-        <div id="trajectory-map"></div>  <!-- 移除img标签 -->
-
-    </div>
-    {#        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"#}
-
-    <!-- 数据导入 -->
-    <div class="panel-card">
-        <h3>📥 农业数据导入</h3>
-        <form method="post" enctype="multipart/form-data" id="upload-form">
-            {% csrf_token %}
-            <div class="upload-area" onclick="document.getElementById('file-input').click()">
-                <p>点击或拖放文件到此区域</p>
-                <p>支持格式：CSV, Excel, GeoJSON</p>
-                <input type="file" name="csv_file" id="file-input" hidden accept=".csv,.xlsx,.geojson">
+    <!-- 数据导入模块 -->
+    <div class="module-container" id="upload-module">
+        <div class="panel-card">
+            <h3>📥 农业数据导入</h3>
+            <form method="post" enctype="multipart/form-data" id="upload-form">
+                {% csrf_token %}
+                <div class="upload-area" onclick="document.getElementById('file-input').click()">
+                    <p>点击或拖放文件到此区域</p>
+                    <p>支持格式：CSV, Excel, GeoJSON</p>
+                    <input type="file" name="csv_file" id="file-input" hidden accept=".csv,.xlsx,.geojson">
+                </div>
+                <button type="submit" class="upload-button">开始上传</button>
+            </form>
+            <div id="upload-progress" style="display:none;margin-top:15px;">上传进度：
+                <progress value="0" max="100"></progress>
             </div>
-            <button type="submit" class="upload-button">开始上传</button>
-        </form>
-        <div id="upload-progress" style="display:none;margin-top:15px;">上传进度：
-            <progress value="0" max="100"></progress>
+        </div>
+    </div>
+
+    <!-- 系统设置模块 -->
+    <div class="module-container" id="settings-module">
+        <div class="panel-card">
+            <h3>👤 个人信息设置</h3>
+            <div class="user-settings">
+                <div class="user-avatar-large">
+                    <div class="avatar-placeholder">👨‍🌾</div>
+                    <button class="change-avatar-btn">更换头像</button>
+                </div>
+                <form id="user-info-form" class="user-info-form">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="username">用户名</label>
+                        <input type="text" id="username" name="username" class="form-control" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">邮箱</label>
+                        <input type="email" id="email" name="email" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">手机号码</label>
+                        <input type="tel" id="phone" name="phone" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="organization">所属单位</label>
+                        <input type="text" id="organization" name="organization" class="form-control">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="save-btn">保存修改</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="panel-card">
+            <h3>🔒 修改密码</h3>
+            <form id="change-password-form" class="password-form">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="current-password">当前密码</label>
+                    <input type="password" id="current-password" name="current_password" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="new-password">新密码</label>
+                    <input type="password" id="new-password" name="new_password" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="confirm-password">确认新密码</label>
+                    <input type="password" id="confirm-password" name="confirm_password" class="form-control">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="save-btn">修改密码</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
 <!-- 在页面底部添加地图相关脚本 -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
@@ -305,33 +575,12 @@
     let map;
     let currentMarkers = []; // 存储当前显示的标记
     let isMapInitialized = false;
-    let cachedData = null; // 添加缓存数据变量
-
-    // 显示加载提示
-    function showLoading() {
-        const loadingDiv = document.createElement('div');
-        loadingDiv.id = 'loading-indicator';
-        loadingDiv.style.cssText = `
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255, 255, 255, 0.9);
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2);
-            z-index: 1000;
-        `;
-        //loadingDiv.innerHTML = '正在加载数据...';
-        document.getElementById('trajectory-map').appendChild(loadingDiv);
-        return loadingDiv;
-    }
 
     // 初始化地图
     function initTrajectoryMap() {
         if (isMapInitialized) return;
         
-        const loadingDiv = showLoading();
+        console.log('初始化地图...');
         
         // 使用农业示范坐标
         map = L.map('trajectory-map').setView([46.32615683, 130.6102292], 13);
@@ -343,11 +592,53 @@
         }).addTo(map);
 
         isMapInitialized = true;
-        loadingDiv.remove();
-        
-        // 延迟加载轨迹数据
-        setTimeout(loadTrackData, 500);
+        console.log('地图初始化完成');
     }
+
+    // 模块切换功能
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', function() {
+            // 移除所有导航项的active类
+            document.querySelectorAll('.nav-item').forEach(nav => {
+                nav.classList.remove('active');
+            });
+            // 添加当前项的active类
+            this.classList.add('active');
+
+            // 隐藏所有模块
+            document.querySelectorAll('.module-container').forEach(module => {
+                module.classList.remove('active');
+            });
+
+            // 显示对应的模块
+            const moduleId = this.getAttribute('data-module') + '-module';
+            document.getElementById(moduleId).classList.add('active');
+
+            // 如果切换到地图模块，初始化地图
+            if (moduleId === 'map-module') {
+                console.log('切换到地图模块');
+                // 确保DOM已经更新
+                setTimeout(() => {
+                    if (!isMapInitialized) {
+                        initTrajectoryMap();
+                    } else {
+                        // 如果地图已经初始化，重新调整大小
+                        map.invalidateSize();
+                    }
+                }, 100);
+            }
+        });
+    });
+
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        // 检查当前是否在地图模块
+        const mapModule = document.getElementById('map-module');
+        if (mapModule && mapModule.classList.contains('active')) {
+            console.log('页面加载时初始化地图');
+            setTimeout(initTrajectoryMap, 100);
+        }
+    });
 
     // 格式化日期时间
     function formatDateTime(date) {
@@ -447,61 +738,9 @@
 
     // 刷新数据
     function refreshData() {
-        cachedData = null; // 清除缓存
         loadTrackData();
     }
 
-    // 页面加载完成后延迟初始化地图
-    document.addEventListener('DOMContentLoaded', function() {
-        // 确保地图容器已经加载
-        if (document.getElementById('trajectory-map')) {
-            // 延迟初始化地图，避免阻塞页面加载
-            setTimeout(initTrajectoryMap, 1000);
-        }
-    });
-</script>
-
-<style>
-    /* 新增地图专用样式 */
-    #trajectory-map {
-        height: 580px;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        background: #f8f9fa;
-        margin-top: 15px;
-    }
-
-    /* 覆盖Leaflet默认样式 */
-    .leaflet-control-attribution {
-        background: rgba(255, 255, 255, 0.8) !important;
-        border-radius: 4px !important;
-        padding: 2px 5px !important;
-    }
-</style>
-<script>
-    // 文件上传处理
-    document.getElementById('file-input').addEventListener('change', function (e) {
-        const file = e.target.files[0];
-        const progress = document.querySelector('#upload-progress progress');
-
-        document.getElementById('upload-progress').style.display = 'block';
-
-        // 模拟上传进度
-        let progressValue = 0;
-        const uploadInterval = setInterval(() => {
-            progressValue += 10;
-            progress.value = progressValue;
-            if (progressValue >= 100) {
-                clearInterval(uploadInterval);
-                alert('文件上传成功！');
-            }
-        }, 200);
-    });
-    
-    window.onload = initMap;
-</script>
-
-<script>
     // 加载地块列表
     function refreshFieldList() {
         fetch('/api/fields/')
@@ -573,6 +812,250 @@
     // 页面加载完成后获取地块列表
     document.addEventListener('DOMContentLoaded', function() {
         refreshFieldList();
+    });
+
+    // 添加实时时间显示功能
+    function updateTime() {
+        const now = new Date();
+        const timeString = now.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+        document.getElementById('current-time').textContent = timeString;
+    }
+
+    // 每秒更新一次时间
+    setInterval(updateTime, 1000);
+    updateTime(); // 立即执行一次
+
+    // 获取并显示用户名
+    fetch('/api/user-info/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                document.getElementById('username').textContent = data.username;
+            }
+        })
+        .catch(error => console.error('获取用户信息失败:', error));
+</script>
+
+<style>
+    /* 新增地图专用样式 */
+    #trajectory-map {
+        height: 580px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        background: #f8f9fa;
+        margin-top: 15px;
+    }
+
+    /* 覆盖Leaflet默认样式 */
+    .leaflet-control-attribution {
+        background: rgba(255, 255, 255, 0.8) !important;
+        border-radius: 4px !important;
+        padding: 2px 5px !important;
+    }
+
+    /* 用户信息设置样式 */
+    .user-settings {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .user-avatar-large {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .avatar-placeholder {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: #E8F5E9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 48px;
+        margin: 0 auto 15px;
+        color: var(--secondary-color);
+    }
+
+    .change-avatar-btn {
+        background: none;
+        border: 1px solid var(--primary-color);
+        color: var(--primary-color);
+        padding: 8px 16px;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .change-avatar-btn:hover {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .user-info-form, .password-form {
+        display: grid;
+        gap: 20px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .form-group label {
+        color: #666;
+        font-size: 14px;
+    }
+
+    .form-control {
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 15px;
+        transition: all 0.3s;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary-color);
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+    }
+
+    .form-control[readonly] {
+        background: #f8f9fa;
+        cursor: not-allowed;
+    }
+
+    .form-actions {
+        margin-top: 10px;
+    }
+
+    .save-btn {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background 0.3s;
+        width: 100%;
+    }
+
+    .save-btn:hover {
+        background: var(--secondary-color);
+    }
+
+    /* 响应式调整 */
+    @media (max-width: 768px) {
+        .user-settings {
+            padding: 0 15px;
+        }
+    }
+</style>
+<script>
+    // 文件上传处理
+    document.getElementById('file-input').addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        const progress = document.querySelector('#upload-progress progress');
+
+        document.getElementById('upload-progress').style.display = 'block';
+
+        // 模拟上传进度
+        let progressValue = 0;
+        const uploadInterval = setInterval(() => {
+            progressValue += 10;
+            progress.value = progressValue;
+            if (progressValue >= 100) {
+                clearInterval(uploadInterval);
+                alert('文件上传成功！');
+            }
+        }, 200);
+    });
+    
+    window.onload = initMap;
+</script>
+
+<script>
+    // 获取用户信息
+    function loadUserInfo() {
+        fetch('/api/user-info/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('username').value = data.username;
+                    document.getElementById('email').value = data.email || '';
+                    document.getElementById('phone').value = data.phone || '';
+                    document.getElementById('organization').value = data.organization || '';
+                }
+            })
+            .catch(error => console.error('获取用户信息失败:', error));
+    }
+
+    // 保存用户信息
+    document.getElementById('user-info-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        
+        fetch('/api/update-user-info/', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('个人信息更新成功！');
+            } else {
+                alert('更新失败：' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('更新用户信息失败:', error);
+            alert('更新失败，请稍后重试');
+        });
+    });
+
+    // 修改密码
+    document.getElementById('change-password-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        
+        if (formData.get('new_password') !== formData.get('confirm_password')) {
+            alert('两次输入的新密码不一致！');
+            return;
+        }
+
+        fetch('/api/change-password/', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('密码修改成功！');
+                this.reset();
+            } else {
+                alert('修改失败：' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('修改密码失败:', error);
+            alert('修改失败，请稍后重试');
+        });
+    });
+
+    // 页面加载时获取用户信息
+    document.addEventListener('DOMContentLoaded', function() {
+        loadUserInfo();
     });
 </script>
 </body>
