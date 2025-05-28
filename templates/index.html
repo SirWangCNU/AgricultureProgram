@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>农业轨迹分析后台</title>
+    <link
+            rel="stylesheet"
+            href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+            integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+            crossorigin=""/>
+    <!-- 添加 Leaflet.markercluster 插件的 CSS -->
+    <link
+            rel="stylesheet"
+            href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css"
+            crossorigin=""/>
+    <link
+            rel="stylesheet"
+            href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css"
+            crossorigin=""/>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --secondary-color: #2E7D32;
+            --background-color: #f8f9fa;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', '微软雅黑', sans-serif;
+            background-color: var(--background-color);
+        }
+
+        /* 侧边导航栏 */
+        .sidebar {
+            width: 250px;
+            height: 100vh;
+            position: fixed;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        .logo {
+            text-align: center;
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 30px;
+        }
+
+        .nav-item {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+            color: #666;
+        }
+
+        .nav-item:hover {
+            background: #E8F5E9;
+            color: var(--secondary-color);
+        }
+
+        /* 主内容区 */
+        .main-content {
+            margin-left: 250px;
+            padding: 30px;
+        }
+
+        /* 数据面板 */
+        .dashboard-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .panel-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        /* 地图容器 */
+        #trajectory-map {
+            height: 500px;
+            background: #e0e0e0;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+
+        /* 数据上传区域 */
+        .upload-area {
+            border: 2px dashed #C8E6C9;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary-color);
+            background: #F1F8E9;
+        }
+
+        /* 用户信息 */
+        .user-profile {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #E8F5E9;
+            margin-right: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: var(--secondary-color);
+        }
+
+        /* 原有样式保持不变，新增地图相关样式 */
+        #trajectory-map {
+            height: 500px;
+            border-radius: 12px;
+            margin-top: 20px;
+            /* 移除背景色 */
+            background: white;
+            /* 防止地图控件被遮挡 */
+            z-index: 0;
+        }
+
+        /* 新增：地图图例样式 */
+        .map-legend {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .track-selector {
+            padding: 15px;
+        }
+
+        .track-select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            background-color: white;
+        }
+
+        .track-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+
+        .track-info p {
+            margin: 5px 0;
+            color: #666;
+        }
+
+        .track-info span {
+            color: #2E7D32;
+            font-weight: 500;
+        }
+
+        .track-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: 0.3s;
+        }
+
+        .refresh-btn {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .refresh-btn:hover {
+            background: #45a049;
+        }
+
+        .clear-btn {
+            background: #f44336;
+            color: white;
+        }
+
+        .clear-btn:hover {
+            background: #da190b;
+        }
+
+    </style>
+</head>
+<body>
+<!-- 侧边栏 -->
+<div class="sidebar">
+    <div class="logo">
+        <h2 style="color: var(--secondary-color);">🌾 农踪分析</h2>
+    </div>
+    <div class="nav-item active">📊 数据分析看板</div>
+    <div class="nav-item">🗺️ 轨迹可视化</div>
+    <div class="nav-item">📤 数据导入</div>
+    <div class="nav-item">⚙️ 系统设置</div>
+</div>
+
+<!-- 主内容区 -->
+<div class="main-content">
+    <!-- 用户信息 -->
+    <div class="user-profile">
+        <div class="avatar">👨🌾</div>
+        <div>
+            <h2>用户界面</h2>
+            <p>所属区域：北京</p>
+            <a href="/logout/" style="color: var(--secondary-color); text-decoration: none;">
+                <div style="display: flex; align-items: center; margin-top: 10px;">
+                    <span style="margin-right: 5px;">退出登录</span>
+                    <span>🚪</span>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- 轨迹选择面板 -->
+    <div class="dashboard-panel">
+        <div class="panel-card">
+            <h3>🗺️ 地块选择</h3>
+            <div class="track-selector">
+                <select id="field-select" class="track-select">
+                    <option value="">请选择地块...</option>
+                </select>
+                <div class="track-info" id="track-info">
+                    <p>当前选择: <span id="current-field">未选择</span></p>
+                    <p>数据点数: <span id="point-count">0</span></p>
+                    <p>采集时间: <span id="collection-time">-</span></p>
+                </div>
+                <div class="track-actions">
+                    <button onclick="refreshFieldList()" class="action-btn refresh-btn">
+                        🔄 刷新列表
+                    </button>
+                    <button onclick="clearTrack()" class="action-btn clear-btn">
+                        🗑️ 清除轨迹
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 轨迹地图 -->
+    <div class="panel-card">
+        <h3>🚜 农机轨迹可视化</h3>
+        <div id="trajectory-map"></div>  <!-- 移除img标签 -->
+
+    </div>
+    {#        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"#}
+
+    <!-- 数据导入 -->
+    <div class="panel-card">
+        <h3>📥 农业数据导入</h3>
+        <form method="post" enctype="multipart/form-data" id="upload-form">
+            {% csrf_token %}
+            <div class="upload-area" onclick="document.getElementById('file-input').click()">
+                <p>点击或拖放文件到此区域</p>
+                <p>支持格式：CSV, Excel, GeoJSON</p>
+                <input type="file" name="csv_file" id="file-input" hidden accept=".csv,.xlsx,.geojson">
+            </div>
+            <button type="submit" class="upload-button">开始上传</button>
+        </form>
+        <div id="upload-progress" style="display:none;margin-top:15px;">上传进度：
+            <progress value="0" max="100"></progress>
+        </div>
+    </div>
+</div>
+<!-- 在页面底部添加地图相关脚本 -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+<!-- 添加 Leaflet.markercluster 插件的 JavaScript -->
+<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"
+        crossorigin=""></script>
+
+<script>
+    // 地图初始化（只在轨迹模块加载时执行）
+    let map;
+    let currentMarkers = []; // 存储当前显示的标记
+    let isMapInitialized = false;
+    let cachedData = null; // 添加缓存数据变量
+
+    // 显示加载提示
+    function showLoading() {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.id = 'loading-indicator';
+        loadingDiv.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+        `;
+        //loadingDiv.innerHTML = '正在加载数据...';
+        document.getElementById('trajectory-map').appendChild(loadingDiv);
+        return loadingDiv;
+    }
+
+    // 初始化地图
+    function initTrajectoryMap() {
+        if (isMapInitialized) return;
+        
+        const loadingDiv = showLoading();
+        
+        // 使用农业示范坐标
+        map = L.map('trajectory-map').setView([46.32615683, 130.6102292], 13);
+
+        // 使用 Esri 卫星影像服务
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Esri, Maxar, Earthstar Geographics',
+            maxZoom: 19
+        }).addTo(map);
+
+        isMapInitialized = true;
+        loadingDiv.remove();
+        
+        // 延迟加载轨迹数据
+        setTimeout(loadTrackData, 500);
+    }
+
+    // 格式化日期时间
+    function formatDateTime(date) {
+        if (!date) return '-';
+        return date.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }
+
+    // 优化后的分时处理函数
+    function timeChunk(items, process, context, delay = 20) {  // 减少延迟时间
+        let index = 0;
+        const len = items.length;
+        const batchSize = 100;  // 增加每批处理的数量
+        
+        function chunk() {
+            const start = +new Date();
+            let count = 0;
+            
+            while (index < len && count < batchSize && (+new Date() - start < 16)) {  // 控制在16ms内
+                process.call(context, items[index], index);
+                index++;
+                count++;
+            }
+            
+            if (index < len) {
+                requestAnimationFrame(chunk);  // 使用requestAnimationFrame代替setTimeout
+            }
+        }
+        
+        requestAnimationFrame(chunk);
+    }
+    
+    // 优化后的渲染标记函数
+    function renderMarkers(fieldName, points) {
+        console.log(`开始渲染地块 ${fieldName} 的轨迹...`);
+        
+        // 清空现有标记
+        clearMarkers();
+        
+        // 使用分时处理渲染轨迹点
+        timeChunk(points, (point, index) => {
+            if (typeof point.latitude === 'number' && typeof point.longitude === 'number' && 
+                !isNaN(point.latitude) && !isNaN(point.longitude)) {
+                const marker = L.marker([point.latitude, point.longitude], {
+                    icon: L.icon({
+                        iconUrl: "/static/R1.jpg",  // 使用Django的static标签
+                        iconSize: [32, 32],          // 图标大小
+                        iconAnchor: [16, 16],        // 图标锚点位置
+                        popupAnchor: [0, -16]        // 弹出框位置
+                    })
+                });
+                
+                // 减少弹出框信息量
+                marker.bindPopup(`
+                    <b>${fieldName}</b><br>
+                    速度: ${point.velocity} km/h<br>
+                    状态: ${point.state ? '工作中' : '空闲'}<br>
+                    时间: ${point.gps_time}
+                `);
+                
+                currentMarkers.push(marker);
+                marker.addTo(map);
+            }
+        });
+        
+        // 优化视图调整
+        if (points.length > 0) {
+            const coordinates = points
+                .filter(point => typeof point.latitude === 'number' && typeof point.longitude === 'number' && 
+                    !isNaN(point.latitude) && !isNaN(point.longitude))
+                .map(point => [point.latitude, point.longitude]);
+            
+            if (coordinates.length > 0) {
+                const bounds = L.latLngBounds(coordinates);
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+    }
+    
+    // 优化后的清除标记函数
+    function clearMarkers() {
+        // 使用 DocumentFragment 减少DOM操作
+        const fragment = document.createDocumentFragment();
+        currentMarkers.forEach(marker => {
+            if (marker) {
+                marker.remove();
+            }
+        });
+        currentMarkers = [];
+    }
+
+    // 刷新数据
+    function refreshData() {
+        cachedData = null; // 清除缓存
+        loadTrackData();
+    }
+
+    // 页面加载完成后延迟初始化地图
+    document.addEventListener('DOMContentLoaded', function() {
+        // 确保地图容器已经加载
+        if (document.getElementById('trajectory-map')) {
+            // 延迟初始化地图，避免阻塞页面加载
+            setTimeout(initTrajectoryMap, 1000);
+        }
+    });
+</script>
+
+<style>
+    /* 新增地图专用样式 */
+    #trajectory-map {
+        height: 580px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        background: #f8f9fa;
+        margin-top: 15px;
+    }
+
+    /* 覆盖Leaflet默认样式 */
+    .leaflet-control-attribution {
+        background: rgba(255, 255, 255, 0.8) !important;
+        border-radius: 4px !important;
+        padding: 2px 5px !important;
+    }
+</style>
+<script>
+    // 文件上传处理
+    document.getElementById('file-input').addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        const progress = document.querySelector('#upload-progress progress');
+
+        document.getElementById('upload-progress').style.display = 'block';
+
+        // 模拟上传进度
+        let progressValue = 0;
+        const uploadInterval = setInterval(() => {
+            progressValue += 10;
+            progress.value = progressValue;
+            if (progressValue >= 100) {
+                clearInterval(uploadInterval);
+                alert('文件上传成功！');
+            }
+        }, 200);
+    });
+    
+    window.onload = initMap;
+</script>
+
+<script>
+    // 加载地块列表
+    function refreshFieldList() {
+        fetch('/api/fields/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const select = document.getElementById('field-select');
+                    select.innerHTML = '<option value="">请选择地块...</option>';
+                    data.data.forEach(field => {
+                        const option = document.createElement('option');
+                        option.value = field.file_name;
+                        option.textContent = field.file_name;
+                        select.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => console.error('加载地块列表失败:', error));
+    }
+
+    // 清除当前轨迹
+    function clearTrack() {
+        clearMarkers();
+        document.getElementById('current-field').textContent = '未选择';
+        document.getElementById('point-count').textContent = '0';
+        document.getElementById('collection-time').textContent = '-';
+        document.getElementById('field-select').value = '';
+    }
+
+    // 监听地块选择
+    document.getElementById('field-select').addEventListener('change', function(e) {
+        const fieldName = e.target.value;
+        if (!fieldName) {
+            clearTrack();
+            return;
+        }
+
+        // 加载选中的地块轨迹数据
+        fetch(`/api/tracks/?field_name=${encodeURIComponent(fieldName)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const trackData = data.data;
+                    if (trackData.length > 0) {
+                        // 更新信息显示
+                        document.getElementById('current-field').textContent = fieldName;
+                        document.getElementById('point-count').textContent = trackData.length;
+                        
+                        // 处理时间
+                        const times = trackData
+                            .map(item => new Date(item.gps_time))
+                            .filter(date => !isNaN(date.getTime()));
+                        
+                        if (times.length > 0) {
+                            const startTime = new Date(Math.min(...times));
+                            document.getElementById('collection-time').textContent = formatDateTime(startTime);
+                        } else {
+                            document.getElementById('collection-time').textContent = '-';
+                        }
+
+                        // 清除现有标记并显示新轨迹
+                        clearMarkers();
+                        renderMarkers(fieldName, trackData);
+                    }
+                }
+            })
+            .catch(error => console.error('加载轨迹数据失败:', error));
+    });
+
+    // 页面加载完成后获取地块列表
+    document.addEventListener('DOMContentLoaded', function() {
+        refreshFieldList();
+    });
+</script>
+</body>
+</html>

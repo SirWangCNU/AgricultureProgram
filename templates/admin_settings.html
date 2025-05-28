@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统设置 - 农业轨迹分析系统</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --secondary-color: #2E7D32;
+            --background-color: #f8f9fa;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', '微软雅黑', sans-serif;
+            background-color: var(--background-color);
+        }
+
+        .admin-header {
+            background: white;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .admin-nav {
+            display: flex;
+            gap: 20px;
+        }
+
+        .admin-nav a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+
+        .admin-nav a:hover {
+            background: #E8F5E9;
+        }
+
+        /* 侧边导航栏 */
+        .sidebar {
+            width: 250px;
+            height: 100vh;
+            position: fixed;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        
+        .logo {
+            text-align: center;
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 30px;
+        }
+
+        .nav-item {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+            color: #666;
+            text-decoration: none;
+            display: block;
+        }
+
+        .nav-item:hover {
+            background: #E8F5E9;
+            color: var(--primary-color);
+        }
+
+        .nav-item.active {
+            background: #E8F5E9;
+            color: var(--primary-color);
+        }
+
+        /* 设置内容区域 */
+        .settings-container {
+            margin-left: 250px;
+            padding: 30px;
+        }
+
+        .settings-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .settings-card h2 {
+            color: var(--secondary-color);
+            margin-top: 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .settings-item {
+            margin-bottom: 20px;
+        }
+
+        .settings-item label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .settings-item input, .settings-item select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 16px;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #757575;
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-header">
+        <h1>🌾 农踪分析 - 系统设置</h1>
+        <div class="admin-nav">
+            <a href="{% url 'logout' %}">退出登录</a>
+        </div>
+    </div>
+
+    <!-- 侧边栏 -->
+    <div class="sidebar">
+        <div class="logo">
+            <h2>🌾 农踪分析</h2>
+        </div>
+        <a href="{% url 'admin_dashboard' %}" class="nav-item">📊 数据分析看板</a>
+        <a href="{% url 'admin_track_visualization' %}" class="nav-item">🗺️ 轨迹可视化</a>
+        <a href="{% url 'upload_csv' %}" class="nav-item">📤 数据导入</a>
+        <a href="{% url 'admin_settings' %}" class="nav-item active">⚙️ 系统设置</a>
+    </div>
+
+    <!-- 设置内容区域 -->
+    <div class="settings-container">
+        <div class="settings-card">
+            <h2>基本设置</h2>
+            <div class="settings-item">
+                <label for="site-name">系统名称</label>
+                <input type="text" id="site-name" value="{{ settings.site_name }}" readonly>
+            </div>
+            <div class="settings-item">
+                <label for="version">系统版本</label>
+                <input type="text" id="version" value="{{ settings.version }}" readonly>
+            </div>
+            <div class="settings-item">
+                <label for="admin-email">管理员邮箱</label>
+                <input type="email" id="admin-email" value="{{ settings.admin_email }}" readonly>
+            </div>
+        </div>
+
+        <div class="settings-card">
+            <h2>数据管理</h2>
+            <div class="settings-item">
+                <label>数据备份</label>
+                <div class="btn-row">
+                    <button class="btn btn-primary">立即备份</button>
+                    <button class="btn btn-secondary">查看备份记录</button>
+                </div>
+            </div>
+            <div class="settings-item">
+                <label>数据清理</label>
+                <div class="btn-row">
+                    <button class="btn btn-primary">清理无效数据</button>
+                    <button class="btn btn-secondary">恢复出厂设置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 
