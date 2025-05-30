@@ -424,6 +424,105 @@
             background: #da190b;
         }
 
+        /* 地块信息卡片样式 */
+        .field-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-label {
+            display: block;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            display: block;
+            color: var(--secondary-color);
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .field-list {
+            margin-top: 20px;
+        }
+
+        .field-list h4 {
+            color: var(--secondary-color);
+            margin-bottom: 15px;
+        }
+
+        .field-table-container {
+            overflow-x: auto;
+        }
+
+        .field-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .field-table th,
+        .field-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .field-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .field-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .field-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .field-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .view-btn {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .view-btn:hover {
+            background: var(--secondary-color);
+        }
+
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+        }
+
+        .delete-btn:hover {
+            background: #c82333;
+        }
+
     </style>
 </head>
 <body>
@@ -434,7 +533,7 @@
         <div class="current-time" id="current-time"></div>
         <div class="user-info">
             <div class="user-avatar">👨‍🌾</div>
-            <span id="username">加载中...</span>
+            <span id="nav-username">加载中...</span>
         </div>
         <a href="/logout/" class="logout-btn">退出登录</a>
     </div>
@@ -453,8 +552,36 @@
     <!-- 数据分析看板模块 -->
     <div class="module-container active" id="dashboard-module">
         <div class="dashboard-panel">
-            <h3>📊 数据概览</h3>
-            <!-- 添加数据统计卡片 -->
+            <div class="panel-card">
+                <h3>🌾 地块信息概览</h3>
+                <div class="field-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">总地块数</span>
+                        <span class="stat-value" id="total-fields">加载中...</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">总轨迹点数</span>
+                        <span class="stat-value" id="total-tracks">加载中...</span>
+                    </div>
+                </div>
+                <div class="field-list">
+                    <h4>地块列表</h4>
+                    <div class="field-table-container">
+                        <table class="field-table">
+                            <thead>
+                                <tr>
+                                    <th>地块名称</th>
+                                    <th>轨迹点数</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="field-list-body">
+                                <!-- 地块数据将通过JavaScript动态加载 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -833,135 +960,23 @@
     setInterval(updateTime, 1000);
     updateTime(); // 立即执行一次
 
-    // 获取并显示用户名
+    // 获取并显示用户信息
     fetch('/api/user-info/')
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                document.getElementById('username').textContent = data.username;
+                // 更新顶部导航栏的用户名
+                document.getElementById('nav-username').textContent = data.username;
+                // 更新表单中的用户信息
+                document.getElementById('username').value = data.username;
+                document.getElementById('email').value = data.email || '';
+                document.getElementById('phone').value = data.phone || '';
+                document.getElementById('organization').value = data.organization || '';
             }
         })
         .catch(error => console.error('获取用户信息失败:', error));
 </script>
 
-<style>
-    /* 新增地图专用样式 */
-    #trajectory-map {
-        height: 580px;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        background: #f8f9fa;
-        margin-top: 15px;
-    }
-
-    /* 覆盖Leaflet默认样式 */
-    .leaflet-control-attribution {
-        background: rgba(255, 255, 255, 0.8) !important;
-        border-radius: 4px !important;
-        padding: 2px 5px !important;
-    }
-
-    /* 用户信息设置样式 */
-    .user-settings {
-        max-width: 600px;
-        margin: 0 auto;
-    }
-
-    .user-avatar-large {
-        text-align: center;
-        margin-bottom: 30px;
-    }
-
-    .avatar-placeholder {
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        background: #E8F5E9;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 48px;
-        margin: 0 auto 15px;
-        color: var(--secondary-color);
-    }
-
-    .change-avatar-btn {
-        background: none;
-        border: 1px solid var(--primary-color);
-        color: var(--primary-color);
-        padding: 8px 16px;
-        border-radius: 20px;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-
-    .change-avatar-btn:hover {
-        background: var(--primary-color);
-        color: white;
-    }
-
-    .user-info-form, .password-form {
-        display: grid;
-        gap: 20px;
-    }
-
-    .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .form-group label {
-        color: #666;
-        font-size: 14px;
-    }
-
-    .form-control {
-        padding: 12px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        font-size: 15px;
-        transition: all 0.3s;
-    }
-
-    .form-control:focus {
-        border-color: var(--primary-color);
-        outline: none;
-        box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
-    }
-
-    .form-control[readonly] {
-        background: #f8f9fa;
-        cursor: not-allowed;
-    }
-
-    .form-actions {
-        margin-top: 10px;
-    }
-
-    .save-btn {
-        background: var(--primary-color);
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 16px;
-        transition: background 0.3s;
-        width: 100%;
-    }
-
-    .save-btn:hover {
-        background: var(--secondary-color);
-    }
-
-    /* 响应式调整 */
-    @media (max-width: 768px) {
-        .user-settings {
-            padding: 0 15px;
-        }
-    }
-</style>
 <script>
     // 文件上传处理
     document.getElementById('file-input').addEventListener('change', function (e) {
@@ -1057,6 +1072,93 @@
     document.addEventListener('DOMContentLoaded', function() {
         loadUserInfo();
     });
+</script>
+
+<script>
+// 加载地块信息
+function loadFieldInfo() {
+    fetch('/api/fields/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const fields = data.data;
+                const tbody = document.getElementById('field-list-body');
+                let totalTracks = 0;
+                
+                // 清空现有内容
+                tbody.innerHTML = '';
+                
+                // 更新总地块数
+                document.getElementById('total-fields').textContent = fields.length;
+                
+                // 添加每个地块的信息
+                fields.forEach(field => {
+                    totalTracks += field.track_count;
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${field.file_name}</td>
+                        <td>${field.track_count}</td>
+                        <td>
+                            <div class="field-actions">
+                                <button class="field-btn view-btn" onclick="viewField('${field.file_name}')">
+                                    查看轨迹
+                                </button>
+                                <button class="field-btn delete-btn" onclick="deleteField('${field.file_name}')">
+                                    删除
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                
+                // 更新总轨迹点数
+                document.getElementById('total-tracks').textContent = totalTracks;
+            }
+        })
+        .catch(error => console.error('加载地块信息失败:', error));
+}
+
+// 查看地块轨迹
+function viewField(fieldName) {
+    // 切换到地图模块
+    document.querySelector('.nav-item[data-module="map"]').click();
+    // 选择对应的地块
+    const select = document.getElementById('field-select');
+    select.value = fieldName;
+    // 触发change事件以加载轨迹
+    select.dispatchEvent(new Event('change'));
+}
+
+// 删除地块
+function deleteField(fieldName) {
+    if (confirm(`确定要删除地块 "${fieldName}" 吗？此操作不可恢复。`)) {
+        fetch(`/api/fields/${encodeURIComponent(fieldName)}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('地块删除成功！');
+                loadFieldInfo(); // 重新加载地块列表
+            } else {
+                alert('删除失败：' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('删除地块失败:', error);
+            alert('删除失败，请稍后重试');
+        });
+    }
+}
+
+// 页面加载时获取地块信息
+document.addEventListener('DOMContentLoaded', function() {
+    loadFieldInfo();
+});
 </script>
 </body>
 </html>

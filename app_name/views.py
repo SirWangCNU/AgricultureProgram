@@ -20,7 +20,7 @@ from django.contrib.auth.models import User, Group
 from django.contrib import messages
 from django.db.models import Count
 
-from app_name.models import IrregularBlock, FieldInfo
+from app_name.models import IrregularBlock, FieldInfo, UserProfile
 
 def login_view(request):
     if request.method == 'POST':
@@ -429,14 +429,23 @@ def delete_field(request, field_name):
 @login_required
 def get_user_info(request):
     """获取用户信息"""
-    user = request.user
-    return JsonResponse({
-        'status': 'success',
-        'username': user.username,
-        'email': user.email,
-        'phone': user.profile.phone if hasattr(user, 'profile') else '',
-        'organization': user.profile.organization if hasattr(user, 'profile') else '',
-    })
+    try:
+        user = request.user
+        # 获取或创建用户档案
+        profile, created = UserProfile.objects.get_or_create(user=user)
+        
+        return JsonResponse({
+            'status': 'success',
+            'username': user.username,
+            'email': user.email,
+            'phone': profile.phone or '',
+            'organization': profile.organization or '',
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
 
 @login_required
 def update_user_info(request):
