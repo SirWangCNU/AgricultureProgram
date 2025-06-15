@@ -17,6 +17,10 @@
             rel="stylesheet"
             href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css"
             crossorigin=""/>
+    <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/leaflet.measurecontrol@2.0.2/dist/leaflet-measure.css"
+            crossorigin=""/>
     <style>
         :root {
             --primary-color: #4CAF50;
@@ -352,6 +356,16 @@
             font-weight: 500;
         }
 
+        /* 地图模块特殊样式 */
+        #map-module .panel-card {
+            margin: 0;
+            padding: 15px;
+            height: calc(100vh - 80px); /* 增加高度 */
+            display: flex;
+            flex-direction: column;
+            background: var(--surface-color);
+        }
+
         /* 地图模块样式 */
         .map-container {
             background: var(--surface-color);
@@ -462,14 +476,33 @@
         }
 
         .clear-btn:hover {
+            background: #da190b;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        /* Hide the default Leaflet Measure toggle button */
+        .leaflet-measure-control .leaflet-measure-toggle {
+            display: none !important;
+        }
+
+        /* Style for the new measure button */
+        .action-btn.measure-btn {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            box-shadow: var(--shadow-light);
+        }
+
+        .action-btn.measure-btn:hover {
             transform: translateY(-2px);
             box-shadow: var(--shadow-medium);
         }
 
         #trajectory-map {
-            height: 600px;
+            flex: 1;
+            min-height: 650px; /* 增加最小高度 */
             width: 100%;
-            border-radius: var(--border-radius);
+            border-radius: var(--border-radius); /* 使用变量 */
             overflow: hidden;
             box-shadow: var(--shadow-light);
             border: 1px solid var(--border-color);
@@ -930,6 +963,9 @@
                         <button onclick="clearTrack()" class="action-btn clear-btn">
                             🗑️ 清除轨迹
                         </button>
+                        <button onclick="toggleMeasure()" class="action-btn measure-btn">
+                            📏 测距
+                        </button>
                     </div>
                 </div>
             </div>
@@ -962,6 +998,33 @@
                 <input type="text" id="search-field-name" class="form-control" placeholder="例如: 农场1号地块">
             </div>
             <button class="upload-button" onclick="searchAndDisplayTrack()" style="max-width: none;">查询并显示轨迹</button>
+
+            <div id="track-details-display" style="margin-top: 30px; display: none;">
+                <h4>轨迹点详细数据</h4>
+                <div class="field-table-container">
+                    <table class="field-table">
+                        <thead>
+                            <tr>
+                                <th>序号</th>
+                                <th>GPS时间</th>
+                                <th>经度</th>
+                                <th>纬度</th>
+                                <th>X坐标</th>
+                                <th>Y坐标</th>
+                                <th>速度(km/h)</th>
+                                <th>航向(°)</th>
+                                <th>工作状态</th>
+                                <th>幅度(m)</th>
+                                <th>深度(m)</th>
+                                <th>深度标准值(m)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="track-details-body">
+                            <!-- 轨迹点详细数据将通过JavaScript动态加载 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1046,18 +1109,21 @@
 <!-- 添加 Leaflet.markercluster 插件的 JavaScript -->
 <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"
         crossorigin=""></script>
+<!-- 添加 Leaflet.Measure 插件的 JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/leaflet.measurecontrol@2.0.2/dist/leaflet-measure.js"
+        crossorigin=""></script>
 
 <script>
-    // 地图初始化（只在轨迹模块加载时执行）
     let map;
     let currentMarkers = []; // 存储当前显示的标记
     let isMapInitialized = false;
+    let measureControl; // 声明测距控件实例
 
-    // 初始化地图
+    // 地图初始化（只在轨迹模块加载时执行）
     function initTrajectoryMap() {
         if (isMapInitialized) return;
         
-        console.log('初始化地图...');
+        console.log('开始初始化地图...');
         
         // 使用农业示范坐标
         map = L.map('trajectory-map').setView([46.32615683, 130.6102292], 13);
@@ -1068,8 +1134,33 @@
             maxZoom: 19
         }).addTo(map);
 
+        // 添加测距控件
+        measureControl = L.control.measure({
+            primaryLengthUnit: 'meters',
+            secondaryLengthUnit: 'kilometers',
+            primaryAreaUnit: 'sqmeters',
+            secondaryAreaUnit: 'hectares',
+            activeColor: '#4CAF50',
+            completedColor: '#2E7D32',
+            localization: 'zh_CN',
+            // position: 'topleft' // 默认右上角，可以根据需要调整
+        }).addTo(map);
+        console.log('measureControl 对象：', measureControl);
+
         isMapInitialized = true;
         console.log('地图初始化完成');
+    }
+
+    // 新增：测距功能切换函数
+    function toggleMeasure() {
+        console.log('点击测距按钮...');
+        if (measureControl) {
+            console.log('尝试切换测距功能...');
+            // 直接调用测距控件的toggle方法来激活/关闭测距功能
+            measureControl.toggle();
+        } else {
+            console.error('Measure control not initialized.');
+        }
     }
 
     // 模块切换功能
@@ -1297,11 +1388,41 @@
         fetch(`/api/tracks/?field_name=${encodeURIComponent(searchFieldName)}`)
             .then(response => response.json())
             .then(data => {
+                console.log('Received track data:', data);
+                const trackDetailsDisplay = document.getElementById('track-details-display');
+                const trackDetailsBody = document.getElementById('track-details-body');
+                trackDetailsBody.innerHTML = ''; // 清空上一次查询的数据
+
                 if (data.status === 'success' && data.data.length > 0) {
-                    // 切换到地图模块
+                    trackDetailsDisplay.style.display = 'block'; // 显示表格
+
+                    const trackData = data.data;
+
+                    // 填充表格详细数据
+                    trackData.forEach((point, index) => {
+                        console.log('Processing point:', point);
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${index + 1}</td>
+                            <td>${formatDateTime(new Date(point.gps_time))}</td>
+                            <td>${typeof point.longitude === 'number' && !isNaN(point.longitude) ? point.longitude.toFixed(4) : 'N/A'}</td>
+                            <td>${typeof point.latitude === 'number' && !isNaN(point.latitude) ? point.latitude.toFixed(4) : 'N/A'}</td>
+                            <td>${point.x !== undefined ? point.x.toFixed(2) : 'N/A'}</td>
+                            <td>${point.y !== undefined ? point.y.toFixed(2) : 'N/A'}</td>
+                            <td>${typeof point.velocity === 'number' && !isNaN(point.velocity) ? point.velocity.toFixed(2) : 'N/A'}</td>
+                            <td>${point.heading !== undefined ? point.heading.toFixed(2) : 'N/A'}</td>
+                            <td>${point.state ? '工作中' : '空闲'}</td>
+                            <td>${point.amplitude !== undefined ? point.amplitude.toFixed(2) : 'N/A'}</td>
+                            <td>${point.depth !== undefined ? point.depth.toFixed(2) : 'N/A'}</td>
+                            <td>${point.standard_depth !== undefined ? point.standard_depth.toFixed(2) : 'N/A'}</td>
+                        `;
+                        trackDetailsBody.appendChild(tr);
+                    });
+
+                    // 切换到地图模块 (原有逻辑)
                     document.querySelector('.nav-item[data-module="map"]').click();
                     
-                    // 设置地块选择器
+                    // 设置地块选择器 (原有逻辑)
                     const select = document.getElementById('field-select');
                     let optionFound = false;
                     for (let i = 0; i < select.options.length; i++) {
@@ -1318,12 +1439,11 @@
                         console.warn(`地块 "${searchFieldName}" 不在列表中，但将直接渲染。`);
                     }
 
-                    const trackData = data.data;
-                    // 更新信息显示
+                    // 更新信息显示 (原有逻辑)
                     document.getElementById('current-field').textContent = searchFieldName;
                     document.getElementById('point-count').textContent = trackData.length;
                     
-                    // 处理时间
+                    // 处理时间 (原有逻辑)
                     const times = trackData
                         .map(item => new Date(item.gps_time))
                         .filter(date => !isNaN(date.getTime()));
@@ -1335,15 +1455,18 @@
                         document.getElementById('collection-time').textContent = '-';
                     }
 
-                    // 清除现有标记并显示新轨迹
+                    // 清除现有标记并显示新轨迹 (原有逻辑)
                     clearMarkers();
                     renderMarkers(searchFieldName, trackData);
                     
                 } else {
+                    trackDetailsDisplay.style.display = 'none'; // 如果没有数据则隐藏表格
                     alert(`未找到地块 "${searchFieldName}" 的轨迹数据，或数据为空。`);
                 }
             })
             .catch(error => {
+                const trackDetailsDisplay = document.getElementById('track-details-display');
+                trackDetailsDisplay.style.display = 'none'; // 错误时隐藏表格
                 console.error('查询轨迹数据失败:', error);
                 alert('查询轨迹数据失败，请稍后重试。');
             });
