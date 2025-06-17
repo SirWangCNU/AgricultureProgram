@@ -484,7 +484,7 @@ def change_password(request):
         # 更新session
         update_session_auth_hash(request, request.user)
         
-        return JsonResponse({'status': 'success'})
+        return JsonResponse({'status': 'success', 'message': '密码修改成功！请使用新密码重新登录'})
     return JsonResponse({'status': 'error', 'message': '无效的请求方法'})
 
 

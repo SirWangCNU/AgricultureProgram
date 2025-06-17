@@ -21,6 +21,7 @@
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/leaflet.measurecontrol@2.0.2/dist/leaflet-measure.css"
             crossorigin=""/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
     <style>
         :root {
             --primary-color: #4CAF50;
@@ -880,6 +881,38 @@
             background-color: var(--primary-color) !important;
             color: white !important;
         }
+
+        .data-table tbody tr {
+            transition: background-color 0.2s;
+        }
+        
+        .data-table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .data-table tbody td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            color: #666;
+        }
+        
+        .data-table tbody tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+        
+        .data-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .status-working {
+            color: #4CAF50;
+            font-weight: 500;
+        }
+        
+        .status-idle {
+            color: #FFA726;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -900,7 +933,7 @@
 <div class="sidebar">
     <div class="nav-item active" data-module="dashboard">数据分析看板</div>
     <div class="nav-item" data-module="map">轨迹地图显示</div>
-    <div class="nav-item" data-module="upload">数据导入</div>
+    <div class="nav-item" data-module="upload">数据导入与轨迹信息查询</div>
     <div class="nav-item" data-module="settings">用户信息设置</div>
 </div>
 
@@ -977,16 +1010,17 @@
     <div class="module-container" id="upload-module">
         <div class="panel-card">
             <h3>轨迹数据导入</h3>
-            <form method="post" enctype="multipart/form-data" id="upload-form">
-                {% csrf_token %}
+            <form method="post" enctype="multipart/form-data" id="upload-form" action="/upload/">
+                <input type="hidden" name="csrfmiddlewaretoken" value="etkIeKqXAPds7P2T3ReAUsM8734kA3AnFyDophpEDNW8KEZmVgJCSsBJCqRZXUWH">
                 <div class="upload-area" onclick="document.getElementById('file-input').click()">
                     <p>点击或拖放文件到此区域</p>
-                    <p>支持格式：CSV, Excel, GeoJSON</p>
-                    <input type="file" name="csv_file" id="file-input" hidden accept=".csv,.xlsx,.geojson">
+                    <p>支持格式：CSV</p>
+                    <input type="file" name="csv_file" id="file-input" hidden accept=".csv">
                 </div>
                 <button type="submit" class="upload-button">开始上传</button>
             </form>
-            <div id="upload-progress" style="display:none;margin-top:15px;">上传进度：
+            <div id="upload-progress" style="display:none;margin-top:15px;">
+                <p id="upload-status">准备上传...</p>
                 <progress value="0" max="100"></progress>
             </div>
 
@@ -998,33 +1032,6 @@
                 <input type="text" id="search-field-name" class="form-control" placeholder="例如: 农场1号地块">
             </div>
             <button class="upload-button" onclick="searchAndDisplayTrack()" style="max-width: none;">查询并显示轨迹</button>
-
-            <div id="track-details-display" style="margin-top: 30px; display: none;">
-                <h4>轨迹点详细数据</h4>
-                <div class="field-table-container">
-                    <table class="field-table">
-                        <thead>
-                            <tr>
-                                <th>序号</th>
-                                <th>GPS时间</th>
-                                <th>经度</th>
-                                <th>纬度</th>
-                                <th>X坐标</th>
-                                <th>Y坐标</th>
-                                <th>速度(km/h)</th>
-                                <th>航向(°)</th>
-                                <th>工作状态</th>
-                                <th>幅度(m)</th>
-                                <th>深度(m)</th>
-                                <th>深度标准值(m)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="track-details-body">
-                            <!-- 轨迹点详细数据将通过JavaScript动态加载 -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -1043,7 +1050,7 @@
                     </div>
                     <div class="user-info-section">
                         <form id="user-info-form" class="user-info-form">
-                            {% csrf_token %}
+                            <input type="hidden" name="csrfmiddlewaretoken" value="etkIeKqXAPds7P2T3ReAUsM8734kA3AnFyDophpEDNW8KEZmVgJCSsBJCqRZXUWH">
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="username">用户名</label>
@@ -1076,7 +1083,7 @@
             <div class="panel-card">
                 <h3>🔒 修改密码</h3>
                 <form id="change-password-form" class="password-form">
-                    {% csrf_token %}
+                    <input type="hidden" name="csrfmiddlewaretoken" value="etkIeKqXAPds7P2T3ReAUsM8734kA3AnFyDophpEDNW8KEZmVgJCSsBJCqRZXUWH">
                     <div class="form-row">
                         <div class="form-group">
                             <label for="current-password">当前密码</label>
@@ -1100,6 +1107,28 @@
             </div>
         </div>
     </div>
+
+    <!-- 轨迹数据查询模块 -->
+    <div class="module" id="track-query-module">
+        <div id="track-details-display" style="display: none; margin-top: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="overflow-x: auto;">
+                <table class="data-table" style="width: 100%; border-collapse: collapse; margin: 0;">
+                    <thead>
+                        <tr style="background-color: #f5f5f5;">
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600; color: #333;">序号</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600; color: #333;">时间</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600; color: #333;">经度</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600; color: #333;">纬度</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600; color: #333;">速度(m/s)</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600; color: #333;">工作状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="track-details-body" style="font-size: 14px;">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- 在页面底部添加地图相关脚本 -->
@@ -1112,12 +1141,17 @@
 <!-- 添加 Leaflet.Measure 插件的 JavaScript -->
 <script src="https://cdn.jsdelivr.net/npm/leaflet.measurecontrol@2.0.2/dist/leaflet-measure.js"
         crossorigin=""></script>
+<!-- 添加 SweetAlert2 的 JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
 
 <script>
     let map;
     let currentMarkers = []; // 存储当前显示的标记
     let isMapInitialized = false;
     let measureControl; // 声明测距控件实例
+    let isMeasuring = false; // 是否正在测量
+    let measurePoints = []; // 存储测量点
+    let measureLine; // 测量线
 
     // 地图初始化（只在轨迹模块加载时执行）
     function initTrajectoryMap() {
@@ -1128,39 +1162,117 @@
         // 使用农业示范坐标
         map = L.map('trajectory-map').setView([46.32615683, 130.6102292], 13);
 
-        // 使用 Esri 卫星影像服务
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        // 初始化卫星图层
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
             attribution: 'Esri, Maxar, Earthstar Geographics',
             maxZoom: 19
+        });
+
+        // 初始化街道图层
+        const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        });
+
+        // 创建图层组
+        const baseMaps = {
+            "卫星影像": satelliteLayer,
+            "街道地图": streetLayer
+        };
+
+        // 默认显示卫星图层
+        satelliteLayer.addTo(map);
+
+        // 添加图层控制
+        L.control.layers(baseMaps, null, {
+            position: 'topright'
         }).addTo(map);
 
-        // 添加测距控件
-        measureControl = L.control.measure({
-            primaryLengthUnit: 'meters',
-            secondaryLengthUnit: 'kilometers',
-            primaryAreaUnit: 'sqmeters',
-            secondaryAreaUnit: 'hectares',
-            activeColor: '#4CAF50',
-            completedColor: '#2E7D32',
-            localization: 'zh_CN',
-            // position: 'topleft' // 默认右上角，可以根据需要调整
-        }).addTo(map);
-        console.log('measureControl 对象：', measureControl);
+        // 添加点击事件监听器
+        map.on('click', handleMapClick);
 
         isMapInitialized = true;
         console.log('地图初始化完成');
     }
 
-    // 新增：测距功能切换函数
-    function toggleMeasure() {
-        console.log('点击测距按钮...');
-        if (measureControl) {
-            console.log('尝试切换测距功能...');
-            // 直接调用测距控件的toggle方法来激活/关闭测距功能
-            measureControl.toggle();
-        } else {
-            console.error('Measure control not initialized.');
+    // 处理地图点击事件
+    function handleMapClick(e) {
+        if (!isMeasuring) return;
+
+        const point = e.latlng;
+        measurePoints.push(point);
+
+        // 添加标记
+        const marker = L.marker(point).addTo(map);
+        currentMarkers.push(marker);
+
+        // 如果有两个点，计算距离
+        if (measurePoints.length === 2) {
+            // 绘制连线
+            if (measureLine) {
+                map.removeLayer(measureLine);
+            }
+            measureLine = L.polyline(measurePoints, {
+                color: '#4CAF50',
+                weight: 3,
+                dashArray: '5, 10'
+            }).addTo(map);
+
+            // 计算距离
+            const distance = measurePoints[0].distanceTo(measurePoints[1]);
+            const distanceKm = (distance / 1000).toFixed(2);
+            const distanceM = Math.round(distance);
+
+            // 显示距离信息
+            const center = L.latLng(
+                (measurePoints[0].lat + measurePoints[1].lat) / 2,
+                (measurePoints[0].lng + measurePoints[1].lng) / 2
+            );
+
+            L.popup()
+                .setLatLng(center)
+                .setContent(`距离: ${distanceM}米 (${distanceKm}公里)`)
+                .addTo(map);
+
+            // 重置测量状态
+            isMeasuring = false;
+            measurePoints = [];
         }
+    }
+
+    // 测距功能切换函数
+    function toggleMeasure() {
+        if (!isMapInitialized) return;
+
+        isMeasuring = !isMeasuring;
+        
+        if (isMeasuring) {
+            // 清除之前的测量结果
+            clearMeasure();
+            console.log('测距功能已激活，请点击地图上的两个点进行测量');
+        } else {
+            clearMeasure();
+            console.log('测距功能已关闭');
+        }
+    }
+
+    // 清除测量结果
+    function clearMeasure() {
+        // 清除标记
+        currentMarkers.forEach(marker => marker.remove());
+        currentMarkers = [];
+        
+        // 清除连线
+        if (measureLine) {
+            measureLine.remove();
+            measureLine = null;
+        }
+        
+        // 清除测量点
+        measurePoints = [];
+        
+        // 关闭所有弹出框
+        map.closePopup();
     }
 
     // 模块切换功能
@@ -1381,94 +1493,61 @@
     function searchAndDisplayTrack() {
         const searchFieldName = document.getElementById('search-field-name').value.trim();
         if (!searchFieldName) {
-            alert('请输入要查询的地块名称！');
+            Swal.fire({
+                title: '提示',
+                text: '请输入地块名称',
+                icon: 'warning'
+            });
             return;
         }
+
+        const trackDetailsDisplay = document.getElementById('track-details-display');
+        if (!trackDetailsDisplay) {
+            console.error('找不到轨迹详情显示元素');
+            return;
+        }
+
+        // 显示加载状态
+        trackDetailsDisplay.style.display = 'block';
+        const trackDetailsBody = document.getElementById('track-details-body');
+        trackDetailsBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #666;">加载中...</td></tr>';
 
         fetch(`/api/tracks/?field_name=${encodeURIComponent(searchFieldName)}`)
             .then(response => response.json())
             .then(data => {
-                console.log('Received track data:', data);
-                const trackDetailsDisplay = document.getElementById('track-details-display');
-                const trackDetailsBody = document.getElementById('track-details-body');
-                trackDetailsBody.innerHTML = ''; // 清空上一次查询的数据
-
-                if (data.status === 'success' && data.data.length > 0) {
-                    trackDetailsDisplay.style.display = 'block'; // 显示表格
-
-                    const trackData = data.data;
-
-                    // 填充表格详细数据
-                    trackData.forEach((point, index) => {
-                        console.log('Processing point:', point);
+                if (data.status === 'success' && data.data && data.data.length > 0) {
+                    trackDetailsBody.innerHTML = '';
+                    data.data.forEach((point, index) => {
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
-                            <td>${index + 1}</td>
+                            <td style="text-align: center;">${index + 1}</td>
                             <td>${formatDateTime(new Date(point.gps_time))}</td>
-                            <td>${typeof point.longitude === 'number' && !isNaN(point.longitude) ? point.longitude.toFixed(4) : 'N/A'}</td>
-                            <td>${typeof point.latitude === 'number' && !isNaN(point.latitude) ? point.latitude.toFixed(4) : 'N/A'}</td>
-                            <td>${point.x !== undefined ? point.x.toFixed(2) : 'N/A'}</td>
-                            <td>${point.y !== undefined ? point.y.toFixed(2) : 'N/A'}</td>
-                            <td>${typeof point.velocity === 'number' && !isNaN(point.velocity) ? point.velocity.toFixed(2) : 'N/A'}</td>
-                            <td>${point.heading !== undefined ? point.heading.toFixed(2) : 'N/A'}</td>
-                            <td>${point.state ? '工作中' : '空闲'}</td>
-                            <td>${point.amplitude !== undefined ? point.amplitude.toFixed(2) : 'N/A'}</td>
-                            <td>${point.depth !== undefined ? point.depth.toFixed(2) : 'N/A'}</td>
-                            <td>${point.standard_depth !== undefined ? point.standard_depth.toFixed(2) : 'N/A'}</td>
+                            <td>${typeof point.longitude === 'number' ? point.longitude.toFixed(6) : '未知'}</td>
+                            <td>${typeof point.latitude === 'number' ? point.latitude.toFixed(6) : '未知'}</td>
+                            <td style="text-align: center;">${typeof point.velocity === 'number' ? point.velocity.toFixed(2) : '未知'}</td>
+                            <td style="text-align: center;"><span class="${point.state ? 'status-working' : 'status-idle'}">${point.state ? '工作中' : '空闲'}</span></td>
                         `;
                         trackDetailsBody.appendChild(tr);
                     });
-
-                    // 切换到地图模块 (原有逻辑)
-                    document.querySelector('.nav-item[data-module="map"]').click();
-                    
-                    // 设置地块选择器 (原有逻辑)
-                    const select = document.getElementById('field-select');
-                    let optionFound = false;
-                    for (let i = 0; i < select.options.length; i++) {
-                        if (select.options[i].value === searchFieldName) {
-                            select.value = searchFieldName;
-                            optionFound = true;
-                            break;
-                        }
-                    }
-                    
-                    if (!optionFound) {
-                        // 如果选项不存在，可能需要先刷新列表再尝试设置，或者直接渲染
-                        // 为了简化，这里我们直接渲染，但通常会先确保下拉列表已更新
-                        console.warn(`地块 "${searchFieldName}" 不在列表中，但将直接渲染。`);
-                    }
-
-                    // 更新信息显示 (原有逻辑)
-                    document.getElementById('current-field').textContent = searchFieldName;
-                    document.getElementById('point-count').textContent = trackData.length;
-                    
-                    // 处理时间 (原有逻辑)
-                    const times = trackData
-                        .map(item => new Date(item.gps_time))
-                        .filter(date => !isNaN(date.getTime()));
-                    
-                    if (times.length > 0) {
-                        const startTime = new Date(Math.min(...times));
-                        document.getElementById('collection-time').textContent = formatDateTime(startTime);
-                    } else {
-                        document.getElementById('collection-time').textContent = '-';
-                    }
-
-                    // 清除现有标记并显示新轨迹 (原有逻辑)
-                    clearMarkers();
-                    renderMarkers(searchFieldName, trackData);
-                    
                 } else {
-                    trackDetailsDisplay.style.display = 'none'; // 如果没有数据则隐藏表格
-                    alert(`未找到地块 "${searchFieldName}" 的轨迹数据，或数据为空。`);
+                    trackDetailsDisplay.style.display = 'none';
+                    Swal.fire({
+                        title: '提示',
+                        text: `未找到地块 "${searchFieldName}" 的轨迹数据，或数据为空。`,
+                        icon: 'info'
+                    });
                 }
             })
             .catch(error => {
-                const trackDetailsDisplay = document.getElementById('track-details-display');
-                trackDetailsDisplay.style.display = 'none'; // 错误时隐藏表格
+                if (trackDetailsDisplay) {
+                    trackDetailsDisplay.style.display = 'none';
+                }
                 console.error('查询轨迹数据失败:', error);
-                alert('查询轨迹数据失败，请稍后重试。');
+                Swal.fire({
+                    title: '错误',
+                    text: '查询轨迹数据失败，请稍后重试。',
+                    icon: 'error'
+                });
             });
     }
 
@@ -1496,60 +1575,44 @@
     setInterval(updateTime, 1000);
     updateTime(); // 立即执行一次
 
-    // 获取并显示用户信息
-    fetch('/api/user-info/')
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                // 更新顶部导航栏的用户名
-                document.getElementById('nav-username').textContent = data.username;
-                // 更新表单中的用户信息
-                document.getElementById('username').value = data.username;
-                document.getElementById('email').value = data.email || '';
-                document.getElementById('phone').value = data.phone || '';
-                document.getElementById('organization').value = data.organization || '';
-            }
-        })
-        .catch(error => console.error('获取用户信息失败:', error));
-</script>
-
-<script>
-    // 文件上传处理
-    document.getElementById('file-input').addEventListener('change', function (e) {
-        const file = e.target.files[0];
-        const progress = document.querySelector('#upload-progress progress');
-
-        document.getElementById('upload-progress').style.display = 'block';
-
-        // 模拟上传进度
-        let progressValue = 0;
-        const uploadInterval = setInterval(() => {
-            progressValue += 10;
-            progress.value = progressValue;
-            if (progressValue >= 100) {
-                clearInterval(uploadInterval);
-                alert('文件上传成功！');
-            }
-        }, 200);
-    });
-    
-    window.onload = initMap;
-</script>
-
-<script>
     // 获取用户信息
     function loadUserInfo() {
+        console.log('开始加载用户信息...');
         fetch('/api/user-info/')
-            .then(response => response.json())
+            .then(response => {
+                console.log('收到服务器响应:', response);
+                return response.json();
+            })
             .then(data => {
+                console.log('解析的用户数据:', data);
                 if (data.status === 'success') {
-                    document.getElementById('username').value = data.username;
-                    document.getElementById('email').value = data.email || '';
-                    document.getElementById('phone').value = data.phone || '';
-                    document.getElementById('organization').value = data.organization || '';
+                    // 更新顶部导航栏的用户名
+                    const navUsername = document.getElementById('nav-username');
+                    if (navUsername) {
+                        navUsername.textContent = data.username;
+                    }
+                    
+                    // 更新用户信息表单
+                    const usernameInput = document.getElementById('username');
+                    const emailInput = document.getElementById('email');
+                    const phoneInput = document.getElementById('phone');
+                    const organizationInput = document.getElementById('organization');
+                    
+                    if (usernameInput) usernameInput.value = data.username || '';
+                    if (emailInput) emailInput.value = data.email || '';
+                    if (phoneInput) phoneInput.value = data.phone || '';
+                    if (organizationInput) organizationInput.value = data.organization || '';
+                    
+                    console.log('用户信息更新完成');
+                } else {
+                    console.error('获取用户信息失败:', data.message);
+                    alert('获取用户信息失败：' + data.message);
                 }
             })
-            .catch(error => console.error('获取用户信息失败:', error));
+            .catch(error => {
+                console.error('获取用户信息失败:', error);
+                alert('获取用户信息失败，请刷新页面重试');
+            });
     }
 
     // 保存用户信息
@@ -1565,6 +1628,7 @@
         .then(data => {
             if (data.status === 'success') {
                 alert('个人信息更新成功！');
+                loadUserInfo(); // 重新加载用户信息
             } else {
                 alert('更新失败：' + data.message);
             }
@@ -1580,33 +1644,196 @@
         e.preventDefault();
         const formData = new FormData(this);
         
+        // 验证新密码长度
+        if (formData.get('new_password').length < 8) {
+            alert('新密码长度不能少于8个字符！');
+            return;
+        }
+
+        // 验证两次密码是否一致
         if (formData.get('new_password') !== formData.get('confirm_password')) {
             alert('两次输入的新密码不一致！');
             return;
         }
 
+        // 显示加载状态
+        const submitButton = this.querySelector('button[type="submit"]');
+        const originalText = submitButton.textContent;
+        submitButton.disabled = true;
+        submitButton.textContent = '修改中...';
+
         fetch('/api/change-password/', {
             method: 'POST',
-            body: formData
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.message || '修改密码失败');
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.status === 'success') {
-                alert('密码修改成功！');
+                alert(data.message || '密码修改成功！');
                 this.reset();
             } else {
-                alert('修改失败：' + data.message);
+                throw new Error(data.message || '修改密码失败');
             }
         })
         .catch(error => {
             console.error('修改密码失败:', error);
-            alert('修改失败，请稍后重试');
+            alert(error.message || '修改失败，请稍后重试');
+        })
+        .finally(() => {
+            // 恢复按钮状态
+            submitButton.disabled = false;
+            submitButton.textContent = originalText;
         });
     });
 
     // 页面加载时获取用户信息
     document.addEventListener('DOMContentLoaded', function() {
         loadUserInfo();
+    });
+</script>
+
+<script>
+    // 文件上传处理
+    document.getElementById('upload-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const fileInput = document.getElementById('file-input');
+        const progress = document.querySelector('#upload-progress progress');
+        const status = document.getElementById('upload-status');
+        
+        if (!fileInput.files[0]) {
+            alert('请先选择文件');
+            return;
+        }
+
+        // 显示进度条
+        document.getElementById('upload-progress').style.display = 'block';
+        progress.value = 0;
+        status.textContent = '正在上传...';
+
+        // 创建 XMLHttpRequest 对象
+        const xhr = new XMLHttpRequest();
+        
+        // 监听上传进度
+        xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+                const percentComplete = (e.loaded / e.total) * 100;
+                progress.value = percentComplete;
+                status.textContent = `上传进度: ${Math.round(percentComplete)}%`;
+            }
+        });
+
+        // 监听上传完成
+        xhr.addEventListener('load', function() {
+            try {
+                if (xhr.status === 200) {
+                    // 尝试解析响应
+                    let response;
+                    try {
+                        response = JSON.parse(xhr.responseText);
+                    } catch (e) {
+                        // 如果不是JSON格式，直接使用响应文本
+                        response = { message: xhr.responseText };
+                    }
+
+                    // 显示成功消息
+                    status.textContent = '上传成功！';
+                    progress.value = 100;
+                    
+                    // 使用 SweetAlert2 显示成功消息
+                    Swal.fire({
+                        title: '上传成功！',
+                        text: response.message || '数据已成功导入数据库',
+                        icon: 'success',
+                        confirmButtonText: '确定'
+                    });
+
+                    // 清空文件输入
+                    fileInput.value = '';
+                    // 重置表单
+                    document.getElementById('upload-form').reset();
+                } else {
+                    // 处理错误响应
+                    let errorMessage;
+                    try {
+                        const errorResponse = JSON.parse(xhr.responseText);
+                        errorMessage = errorResponse.message || '上传失败';
+                    } catch (e) {
+                        errorMessage = xhr.responseText || '上传失败';
+                    }
+                    
+                    status.textContent = '上传失败';
+                    Swal.fire({
+                        title: '上传失败',
+                        text: errorMessage,
+                        icon: 'error',
+                        confirmButtonText: '确定'
+                    });
+                }
+            } catch (error) {
+                console.error('处理响应时出错:', error);
+                status.textContent = '处理响应时出错';
+                Swal.fire({
+                    title: '错误',
+                    text: '处理服务器响应时出错',
+                    icon: 'error',
+                    confirmButtonText: '确定'
+                });
+            }
+        });
+
+        // 监听上传错误
+        xhr.addEventListener('error', function() {
+            status.textContent = '上传出错';
+            Swal.fire({
+                title: '上传错误',
+                text: '网络错误，请检查网络连接后重试',
+                icon: 'error',
+                confirmButtonText: '确定'
+            });
+        });
+
+        // 监听上传中止
+        xhr.addEventListener('abort', function() {
+            status.textContent = '上传已取消';
+            Swal.fire({
+                title: '上传已取消',
+                text: '文件上传已被取消',
+                icon: 'info',
+                confirmButtonText: '确定'
+            });
+        });
+
+        // 发送请求
+        xhr.open('POST', this.action, true);
+        xhr.send(formData);
+    });
+
+    // 文件选择处理
+    document.getElementById('file-input').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            if (!file.name.endsWith('.csv')) {
+                alert('请选择CSV文件');
+                this.value = '';
+                return;
+            }
+            // 显示选中的文件名
+            const status = document.getElementById('upload-status');
+            status.textContent = `已选择文件：${file.name}`;
+        }
     });
 </script>
 
@@ -1639,9 +1866,9 @@ function loadFieldInfo() {
                                 <button class="field-btn view-btn" onclick="viewField('${field.file_name}')">
                                     查看轨迹
                                 </button>
-                                <button class="field-btn delete-btn" onclick="deleteField('${field.file_name}')">
-                                    删除
-                                </button>
+                                
+                                
+                                
                             </div>
                         </td>
                     `;
@@ -1664,31 +1891,6 @@ function viewField(fieldName) {
     select.value = fieldName;
     // 触发change事件以加载轨迹
     select.dispatchEvent(new Event('change'));
-}
-
-// 删除地块
-function deleteField(fieldName) {
-    if (confirm(`确定要删除地块 "${fieldName}" 吗？此操作不可恢复。`)) {
-        fetch(`/api/fields/${encodeURIComponent(fieldName)}/`, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                alert('地块删除成功！');
-                loadFieldInfo(); // 重新加载地块列表
-            } else {
-                alert('删除失败：' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('删除地块失败:', error);
-            alert('删除失败，请稍后重试');
-        });
-    }
 }
 
 // 页面加载时获取地块信息
